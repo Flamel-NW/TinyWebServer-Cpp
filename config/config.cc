@@ -25,7 +25,7 @@ bool Config::actor_pattern_ = false;
 
 void Config::parse_arg(int argc, char* argv[]) {
     int opt = 0;
-    const char str[] = "p:w:m:o:c:t:l:e:";
+    const char str[] = "p:w:m:o:c:t:l:a:";
     while ((opt = getopt(argc, argv, str)) != -1) {
         if (opt == 'p') port_ = atoi(optarg);
         if (opt == 'w') write_log_ = atoi(optarg);
@@ -34,6 +34,6 @@ void Config::parse_arg(int argc, char* argv[]) {
         if (opt == 'c') conn_pool_size_ = atoi(optarg);
         if (opt == 't') thread_pool_size_ = atoi(optarg);
         if (opt == 'l') close_log_ = atoi(optarg);
-        if (opt == 'e') actor_pattern_ = atoi(optarg);
+        if (opt == 'a') actor_pattern_ = atoi(optarg);
     }
 }
