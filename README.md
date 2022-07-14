@@ -1,4 +1,4 @@
-# TinyWebServer
+# TinyWebServer-Cpp
 
 借鉴了[TinyWebServer](https://github.com/qinguoyi/TinyWebServer)这个项目
 
@@ -37,3 +37,7 @@
 * -a，选择反应堆模型，默认Proactor
 	* 0，Proactor模型
 	* 1，Reactor模型
+
+---
+
+[TinyWebServer-Rust](https://github.com/Flamel-NW/TinyWebServer-Rust): 一个Rust实现的简易版本
