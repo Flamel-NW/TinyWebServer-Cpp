@@ -33,13 +33,13 @@ void ConnPool::init(string url, string username, string password, string db_name
         MYSQL* conn = nullptr;
         conn = mysql_init(conn);
         if (conn == nullptr) {
-            LOG_ERROR("Error: %s", mysql_error(conn));
+            LOG_ERROR("MySQL Error: %s!", mysql_error(conn));
             exit(EXIT_FAILURE);
         }
         conn = mysql_real_connect(conn, url.c_str(), username.c_str(), password.c_str(), db_name.c_str(), port, nullptr, 0);
 
         if (conn == nullptr) {
-            LOG_ERROR("Error: %s", mysql_error(conn));
+            LOG_ERROR("MySQL Error: %s!", mysql_error(conn));
             exit(EXIT_FAILURE);
         }
         // 更新连接池和空闲连接数量

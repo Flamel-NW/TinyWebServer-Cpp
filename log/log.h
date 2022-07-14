@@ -8,25 +8,25 @@
 
 // 这四个宏定义在其他文件中使用，主要用于不同类型的日志输出
 #define LOG_DEBUG(format, ...)\
-    if (Config::close_log_) {\
+    if (!Config::close_log_) {\
         Log::get_instance()->write_log(0, format, ##__VA_ARGS__);\
         Log::get_instance()->flush();\
     }
     
 #define LOG_INFO(format, ...)\
-    if (Config::close_log_) {\
+    if (!Config::close_log_) {\
         Log::get_instance()->write_log(1, format, ##__VA_ARGS__);\
         Log::get_instance()->flush();\
     }
 
 #define LOG_WARN(format, ...)\
-    if (Config::close_log_) {\
+    if (!Config::close_log_) {\
         Log::get_instance()->write_log(2, format, ##__VA_ARGS__);\
         Log::get_instance()->flush();\
     }
 
 #define LOG_ERROR(format, ...)\
-    if (Config::close_log_) {\
+    if (!Config::close_log_) {\
         Log::get_instance()->write_log(3, format, ##__VA_ARGS__);\
         Log::get_instance()->flush();\
     }

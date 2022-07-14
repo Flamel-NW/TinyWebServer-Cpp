@@ -77,7 +77,7 @@ void HttpConn::init_mysql_result(ConnPool* conn_pool) {
     ConnRaii mysql_conn(&mysql, conn_pool);
     // 在user表中检索username，passwd数据，浏览器端输入
     if (mysql_query(mysql, "SELECT username, passwd FROM user"))
-        LOG_ERROR("SELECT error:%s\n", mysql_error(mysql));
+        LOG_ERROR("SELECT error: %s!", mysql_error(mysql));
     // 从表中检索完整的结果集
     MYSQL_RES* result = mysql_store_result(mysql);
     // 返回结果集中的列数
@@ -165,7 +165,7 @@ HttpConn::HttpCode HttpConn::process_read() {
         // start_line_是每个数据行在read_buf_中的起始位置
         // checked_idx_表示状态机在read_buf_中读取的位置
         start_line_ = checked_idx_;
-        LOG_INFO("%s", text);
+        LOG_INFO("Process read: %s.", text);
 
         // 主状态机的三种状态转移逻辑
         if (check_state_ == CHECK_STATE_REQUEST_LINE) {
@@ -323,7 +323,7 @@ HttpConn::HttpCode HttpConn::parse_headers(char* text) {
         text += strspn(text, " \t");
         host_ = text;
     } else {
-        LOG_INFO("oop! unknow header: %s", text);
+        LOG_INFO("Oop! Unknown header: %s.", text);
     }
     return NO_REQUEST;
 }
@@ -387,12 +387,13 @@ HttpConn::HttpCode HttpConn::do_request() {
         // 没有重名的，进行增加数据
         if (*(p + 1) == '3') {
             char* sql_insert = (char*) malloc(sizeof(char) * 200);
-            strcpy(sql_insert, "INSERT INTO user(username, passwd) VALUES(");
-            strcpy(sql_insert, "'");
-            strcpy(sql_insert, name);
-            strcpy(sql_insert, "', '");
-            strcpy(sql_insert, password);
-            strcpy(sql_insert, "')");
+            strcat(sql_insert, "INSERT INTO user(username, passwd) VALUES(");
+            strcat(sql_insert, "'");
+            strcat(sql_insert, name);
+            strcat(sql_insert, "', '");
+            strcat(sql_insert, password);
+            strcat(sql_insert, "')");
+            LOG_INFO("MySQL: %s.", sql_insert);
 
             // 判断map中能否找到重复的用户名
             if (users.find(name) == users.end()) {
@@ -473,7 +474,7 @@ bool HttpConn::add_response(const char* format, ...) {
     write_idx_ += len;
     // 清空可变参数列表
     va_end(arg_list);
-    LOG_INFO("request: %s", write_buf_);
+    LOG_INFO("Request: %s.", write_buf_);
     return true;
 }
 

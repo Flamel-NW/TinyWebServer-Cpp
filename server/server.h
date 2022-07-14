@@ -17,17 +17,11 @@ public:
         TIMESLOT = 5                //最小超时单位
     };
 
-    Server();
+    Server(int port, bool close_log, bool write_log, 
+        int conn_pool_size, int thread_pool_size,
+        std::string username, std::string password, std::string db_name,
+        bool opt_linger, int trig_mode, bool actor_pattern);
     ~Server();
-
-    void init(std::string username, std::string password, std::string db_name,
-        int port, bool actor_pattern, bool opt_linger, int trig_mode,
-        bool close_log, bool write_log, int thread_pool_size, int conn_pool_size);
-
-    void init_thread_pool();
-    void init_conn_pool();
-    void init_log();
-    void init_trig_mode();
 
     void event_listen();
     void event_loop();
@@ -42,13 +36,18 @@ public:
     void read_actor(int sockfd);
     void write_actor(int sockfd);
 
+
 public:
+    void init_thread_pool();
+    void init_conn_pool();
+    void init_log();
+    void init_trig_mode();
+
     //基础
     int port_;
     std::string root_dir_;
     bool close_log_;
     bool write_log_;
-    bool actor_pattern_;
 
     int pipefd_[2];
     int epollfd_;
@@ -56,10 +55,10 @@ public:
 
     //数据库连接池相关
     ConnPool* conn_pool_;
+    int conn_pool_size_;
     std::string username_;  // 登陆数据库用户名
     std::string password_;  // 登陆数据库密码
     std::string db_name_;   // 使用数据库名
-    int conn_pool_size_;
 
     //线程池相关
     ThreadPool<HttpConn>* thread_pool_;
@@ -73,6 +72,7 @@ public:
     int trig_mode_;
     bool listenfd_trig_mode_;
     bool connfd_trig_mode_;
+    bool actor_pattern_;
 
     //定时器相关
     ClientData* users_timer_;

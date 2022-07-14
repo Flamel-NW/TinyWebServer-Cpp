@@ -15,22 +15,10 @@ int main(int argc, char* argv[]) {
     Config::parse_arg(argc, argv);
 
     // 初始化
-    Server server;
-    server.init(username, password, db_name,
-        Config::port_, Config::actor_pattern_, Config::opt_linger_, Config::trig_mode_,
-        Config::close_log_, Config::write_log_, Config::thread_pool_size_, Config::conn_pool_size_);
-
-    // 日志
-    server.init_log();
-
-    // 数据库连接池
-    server.init_conn_pool();
-
-    // 线程池
-    server.init_thread_pool();
-
-    // 触发模式
-    server.init_trig_mode();
+    Server server(Config::port_, Config::close_log_, Config::write_log_, 
+        Config::conn_pool_size_, Config::thread_pool_size_,
+        username, password, db_name,
+        Config::opt_linger_, Config::trig_mode_, Config::actor_pattern_);
 
     // 监听
     server.event_listen();

@@ -6,7 +6,14 @@
 
 using namespace std;
 
-Server::Server() {
+Server::Server(int port, bool close_log, bool write_log, 
+    int conn_pool_size, int thread_pool_size,
+    string username, string password, string db_name,
+    bool opt_linger, int trig_mode, bool actor_pattern)
+        : port_(port), close_log_(close_log), write_log_(write_log),
+        conn_pool_size_(conn_pool_size), thread_pool_size_(thread_pool_size),
+        username_(username), password_(password), db_name_(db_name),
+        opt_linger_(opt_linger), trig_mode_(trig_mode), actor_pattern_(actor_pattern) {
     // http_conn类对象
     users_ = new HttpConn[MAX_FD];
 
@@ -17,6 +24,18 @@ Server::Server() {
 
     // 定时器
     users_timer_ = new ClientData[MAX_FD];
+
+    // 日志
+    init_log();
+
+    // 数据库连接池
+    init_conn_pool();
+
+    // 线程池
+    init_thread_pool();
+
+    // 触发模式
+    init_trig_mode();
 }
 
 Server::~Server() {
@@ -27,22 +46,6 @@ Server::~Server() {
     delete[] users_;
     delete[] users_timer_;
     delete thread_pool_;
-}
-
-void Server::init(std::string username, std::string password, std::string db_name,
-        int port, bool actor_pattern, bool opt_linger, int trig_mode,
-        bool close_log, bool write_log, int thread_pool_size, int conn_pool_size) {
-    username_ = username;
-    password_ = password;
-    db_name_ = db_name;
-    port_ = port;
-    actor_pattern_ = actor_pattern;
-    opt_linger_ = opt_linger;
-    trig_mode_ = trig_mode;
-    close_log_ = close_log;
-    write_log_ = write_log;
-    thread_pool_size_ = thread_pool_size;
-    conn_pool_size_ = conn_pool_size;
 }
 
 void Server::init_conn_pool() {
@@ -61,8 +64,7 @@ void Server::init_thread_pool() {
 
 // 初始化日志
 void Server::init_log() {
-    if (!close_log_)
-    {
+    if (!close_log_) {
         if (write_log_)
             Log::get_instance()->init("./ServerLog", close_log_, 2000, 800000, 800);
         else
@@ -70,6 +72,7 @@ void Server::init_log() {
     }
 }
 
+// 初始化触发模式
 void Server::init_trig_mode() {
     // LT + LT
     if (trig_mode_ == 0) {
@@ -160,11 +163,10 @@ void Server::event_loop()
     bool timeout = false;
     bool stop_server = false;
 
-    while (!stop_server)
-    {
+    while (!stop_server) {
         int number = epoll_wait(epollfd_, events_, MAX_EVENT_NUMBER, -1);
         if (number < 0 && errno != EINTR) {
-            LOG_ERROR("epoll failure");
+            LOG_ERROR("Epoll failure!");
             break;
         }
 
@@ -184,7 +186,7 @@ void Server::event_loop()
             // 处理信号  
             } else if ((sockfd == pipefd_[0]) && (events_[i].events & EPOLLIN)) {
                 if (!recv_signal(timeout, stop_server))
-                    LOG_ERROR("recv signal failure");
+                    LOG_ERROR("Receive signal failure!");
 
             // 处理客户连接上接收到的数据
             } else if (events_[i].events & EPOLLIN) {
@@ -197,14 +199,13 @@ void Server::event_loop()
 
         if (timeout) {
             Utils::timer_handler();
-            LOG_INFO("timer tick");
+            LOG_INFO("Timer tick.");
             timeout = false;
         }
     }
 }
 
-void Server::init_timer(int connfd, struct sockaddr_in client_address)
-{
+void Server::init_timer(int connfd, struct sockaddr_in client_address) {
     users_[connfd].init(connfd, client_address, root_dir_.c_str(), connfd_trig_mode_, close_log_, username_, password_, db_name_);
 
     // 初始化client_data数据
@@ -222,39 +223,36 @@ void Server::init_timer(int connfd, struct sockaddr_in client_address)
 
 // 若有数据传输，则将定时器往后延迟3个单位
 // 并对新的定时器在链表上的位置进行调整
-void Server::delay_timer(TimerUtil* timer)
-{
+void Server::delay_timer(TimerUtil* timer) {
     time_t cur = time(nullptr);
     timer->expire = cur + 3 * TIMESLOT;
     Utils::timer_list_.modify_timer(timer);
 
-    LOG_INFO("delay timer once");
+    LOG_INFO("Delay timer once.");
 }
 
 // 服务器端关闭连接，移除对应的定时器
-void Server::close_conn(TimerUtil* timer, int sockfd)
-{
+void Server::close_conn(TimerUtil* timer, int sockfd) {
     timer->callback(&users_timer_[sockfd]);
     if (timer)
         Utils::timer_list_.del_timer(timer);
 
-    LOG_INFO("close fd %d", users_timer_[sockfd].sockfd);
+    LOG_INFO("Close fd %d.", users_timer_[sockfd].sockfd);
 }
 
-bool Server::accept_client_data()
-{
+bool Server::accept_client_data() {
     struct sockaddr_in client_address;
     socklen_t client_addrlength = sizeof(client_address);
 
     if (!listenfd_trig_mode_) {
         int connfd = accept(listenfd_, (struct sockaddr*) &client_address, &client_addrlength);
         if (connfd < 0) {
-            LOG_ERROR("accept error: errno is: %d", errno);
+            LOG_ERROR("Accept error: errno is: %d!", errno);
             return false;
         }
         if (HttpConn::user_count_ >= MAX_FD) {
-            Utils::show_error(connfd, "Internal server busy");
-            LOG_ERROR("Internal server busy");
+            Utils::show_error(connfd, "Internal server busy!");
+            LOG_ERROR("Internal server busy!");
             return false;
         }
         init_timer(connfd, client_address);
@@ -262,12 +260,12 @@ bool Server::accept_client_data()
         while (true) {
             int connfd = accept(listenfd_, (struct sockaddr*) &client_address, &client_addrlength);
             if (connfd < 0) {
-                LOG_ERROR("%s: errno is: %d", "accept error", errno);
+                LOG_ERROR("Accept error: errno is: %d!", errno);
                 break;
             }
             if (HttpConn::user_count_ >= MAX_FD) {
-                Utils::show_error(connfd, "Internal server busy");
-                LOG_ERROR("Internal server busy");
+                Utils::show_error(connfd, "Internal server busy!");
+                LOG_ERROR("Internal server busy!");
                 break;
             }
             init_timer(connfd, client_address);
@@ -277,8 +275,7 @@ bool Server::accept_client_data()
     return true;
 }
 
-bool Server::recv_signal(bool &timeout, bool &stop_server)
-{
+bool Server::recv_signal(bool &timeout, bool &stop_server) {
     int ret = 0;
     char signals[1024];
     ret = recv(pipefd_[0], signals, sizeof(signals), 0);
@@ -296,8 +293,7 @@ bool Server::recv_signal(bool &timeout, bool &stop_server)
     return true;
 }
 
-void Server::read_actor(int sockfd)
-{
+void Server::read_actor(int sockfd) {
     TimerUtil* timer = users_timer_[sockfd].timer;
 
     // reactor
@@ -319,7 +315,7 @@ void Server::read_actor(int sockfd)
     // proactor
     } else {
         if (users_[sockfd].read_once()) {
-            LOG_INFO("deal with the client(%s)", inet_ntoa(users_[sockfd].get_address()->sin_addr));
+            LOG_INFO("Deal with the client(%s).", inet_ntoa(users_[sockfd].get_address()->sin_addr));
             // 若监测到读事件，将该事件放入请求队列
             thread_pool_->append(&users_[sockfd]);
             if (timer) 
@@ -330,8 +326,7 @@ void Server::read_actor(int sockfd)
     }
 }
 
-void Server::write_actor(int sockfd)
-{
+void Server::write_actor(int sockfd) {
     TimerUtil* timer = users_timer_[sockfd].timer;
 
     // reactor
@@ -353,7 +348,7 @@ void Server::write_actor(int sockfd)
     // proactor
     } else {
         if (users_[sockfd].write()) {
-            LOG_INFO("send data to the client(%s)", inet_ntoa(users_[sockfd].get_address()->sin_addr));
+            LOG_INFO("Send data to the client(%s).", inet_ntoa(users_[sockfd].get_address()->sin_addr));
             if (timer) 
                 delay_timer(timer);
         } else {
