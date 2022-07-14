@@ -1,4 +1,5 @@
 #include "log.h"
+#include "pch.h"
 
 using namespace std;
 
@@ -57,7 +58,7 @@ bool Log::init(const char* filename, bool close_log, int buf_size, int max_lines
         strcpy(filename_, p + 1);
         strncpy(dir_, filename, p - filename + 1);
         // 后面的参数和format有关
-        snprintf(log_name, 512, "%s%d_%02d_%02d_%s", dir_, p_tm->tm_year + 1900, p_tm->tm_mon + 1, p_tm->tm_mday, filename);
+        snprintf(log_name, 512, "%s%d_%02d_%02d_%s", dir_, p_tm->tm_year + 1900, p_tm->tm_mon + 1, p_tm->tm_mday, filename_);
     }
     date_ = p_tm->tm_mday;
 

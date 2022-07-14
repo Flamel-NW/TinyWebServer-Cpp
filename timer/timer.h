@@ -12,6 +12,8 @@ class TimerUtil;
 // 连接资源
 struct ClientData
 {
+    ClientData() : sockfd(-1), timer(nullptr) { }
+
     sockaddr_in address;                // 客户端socket地址
     int sockfd;                         // socket文件描述符
     TimerUtil* timer;                   // 定时器
@@ -19,6 +21,9 @@ struct ClientData
 
 // 定时器类
 struct TimerUtil {
+    TimerUtil() 
+        : expire(0), callback(nullptr), user_data(nullptr), pre(nullptr), next(nullptr) { }
+
     time_t expire;                      // 超时时间
     void (* callback) (ClientData*);    // 回调函数
     ClientData* user_data;              // 连接资源
@@ -29,6 +34,7 @@ struct TimerUtil {
 // 定时器容器类
 class TimerList {
 public:
+    TimerList() : head_(nullptr), tail_(nullptr) { }
     // 常规销毁链表
     ~TimerList();
 

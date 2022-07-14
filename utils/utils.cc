@@ -1,5 +1,6 @@
 #include "http_conn.h"
 
+#include "pch.h"
 #include "utils.h"
 
 int* Utils::pipefd_ = nullptr;
@@ -41,7 +42,7 @@ void Utils::add_sig(int sig, void (*handler)(int), bool restart) {
 void Utils::cb_func(ClientData* user_data) {
     // 删除非活动连接在socket上的注册时间
     epoll_ctl(epollfd_, EPOLL_CTL_DEL, user_data->sockfd, 0);
-    if (user_data != nullptr) {
+    if (user_data == nullptr) {
         STDERR_FUNC_LINE();
         exit(EXIT_FAILURE);
     }
@@ -71,7 +72,7 @@ int Utils::set_nonblock(int fd) {
 }
 
 // 将内核时间表注册读事件，LT/ET模式，选择开启EPOLLONESHOT
-void Utils::add_fd(int epollfd_, int fd, bool oneshot, bool trig_mode) {
+void Utils::add_fd(int epollfd, int fd, bool oneshot, bool trig_mode) {
     epoll_event event;
     event.data.fd = fd;
 
@@ -82,18 +83,18 @@ void Utils::add_fd(int epollfd_, int fd, bool oneshot, bool trig_mode) {
 
     if (oneshot) 
         event.events |= EPOLLONESHOT;
-    epoll_ctl(epollfd_, EPOLL_CTL_ADD, fd, &event);
+    epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &event);
     set_nonblock(fd);
 }
 
 // 从内核时间表删除描述符
-void Utils::remove_fd(int epollfd_, int fd) {
-    epoll_ctl(epollfd_, EPOLL_CTL_DEL, fd, 0);
+void Utils::remove_fd(int epollfd, int fd) {
+    epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, 0);
     close(fd);
 }
 
 // 将事件重置为EPOLLONESHOT
-void Utils::modify_fd(int epollfd_, int fd, int events, int trig_mode) {
+void Utils::modify_fd(int epollfd, int fd, int events, int trig_mode) {
     epoll_event event;
     event.data.fd = fd;
 

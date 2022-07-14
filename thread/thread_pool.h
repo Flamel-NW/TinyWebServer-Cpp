@@ -92,7 +92,7 @@ bool ThreadPool<T>::append(T* request, bool state) {
 
 template <typename T>
 void* ThreadPool<T>::worker(void* arg) {
-    ThreadPool* pool = (ThreadPool*)arg;
+    ThreadPool* pool = (ThreadPool*) arg;
     pool->run();
     return pool;
 }

@@ -1,4 +1,7 @@
 #include "server.h"
+#include "http_conn.h"
+#include "pch.h"
+#include <mysql/my_command.h>
 
 
 using namespace std;
@@ -97,16 +100,8 @@ void Server::event_listen()
     }
 
     // 优雅关闭连接
-    if (0 == opt_linger_)
-    {
-        struct linger tmp = {0, 1};
-        setsockopt(listenfd_, SOL_SOCKET, SO_LINGER, &tmp, sizeof(tmp));
-    }
-    else if (1 == opt_linger_)
-    {
-        struct linger tmp = {1, 1};
-        setsockopt(listenfd_, SOL_SOCKET, SO_LINGER, &tmp, sizeof(tmp));
-    }
+    struct linger tmp = { opt_linger_, 1 };
+    setsockopt(listenfd_, SOL_SOCKET, SO_LINGER, &tmp, sizeof(tmp));
 
     int ret = 0;
     struct sockaddr_in address;
@@ -117,7 +112,7 @@ void Server::event_listen()
 
     int flag = 1;
     setsockopt(listenfd_, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag));
-    ret = bind(listenfd_, (struct sockaddr*)&address, sizeof(address));
+    ret = bind(listenfd_, (struct sockaddr*) &address, sizeof(address));
     if (ret < 0) {
         STDERR_FUNC_LINE();
         exit(EXIT_FAILURE);
@@ -189,7 +184,7 @@ void Server::event_loop()
             // 处理信号  
             } else if ((sockfd == pipefd_[0]) && (events_[i].events & EPOLLIN)) {
                 if (!recv_signal(timeout, stop_server))
-                    LOG_ERROR("dealclientdata failure");
+                    LOG_ERROR("recv signal failure");
 
             // 处理客户连接上接收到的数据
             } else if (events_[i].events & EPOLLIN) {
@@ -219,7 +214,7 @@ void Server::init_timer(int connfd, struct sockaddr_in client_address)
     TimerUtil* timer = new TimerUtil;
     timer->user_data = &users_timer_[connfd];
     timer->callback = Utils::cb_func;
-    time_t cur = time(NULL);
+    time_t cur = time(nullptr);
     timer->expire = cur + 3 * TIMESLOT;
     users_timer_[connfd].timer = timer;
     Utils::timer_list_.add_timer(timer);
@@ -229,20 +224,19 @@ void Server::init_timer(int connfd, struct sockaddr_in client_address)
 // 并对新的定时器在链表上的位置进行调整
 void Server::delay_timer(TimerUtil* timer)
 {
-    time_t cur = time(NULL);
+    time_t cur = time(nullptr);
     timer->expire = cur + 3 * TIMESLOT;
     Utils::timer_list_.modify_timer(timer);
 
-    LOG_INFO("adjust timer once");
+    LOG_INFO("delay timer once");
 }
 
 // 服务器端关闭连接，移除对应的定时器
 void Server::close_conn(TimerUtil* timer, int sockfd)
 {
     timer->callback(&users_timer_[sockfd]);
-    if (timer) {
+    if (timer)
         Utils::timer_list_.del_timer(timer);
-    }
 
     LOG_INFO("close fd %d", users_timer_[sockfd].sockfd);
 }
@@ -255,7 +249,7 @@ bool Server::accept_client_data()
     if (!listenfd_trig_mode_) {
         int connfd = accept(listenfd_, (struct sockaddr*) &client_address, &client_addrlength);
         if (connfd < 0) {
-            LOG_ERROR("%s:errno is:%d", "accept error", errno);
+            LOG_ERROR("accept error: errno is: %d", errno);
             return false;
         }
         if (HttpConn::user_count_ >= MAX_FD) {
@@ -311,7 +305,7 @@ void Server::read_actor(int sockfd)
         if (timer) 
             delay_timer(timer);
         // 若监测到读事件，将该事件放入请求队列
-        thread_pool_->append(users_ + sockfd, false);
+        thread_pool_->append(&users_[sockfd], false);
         while (true) {
             if (users_[sockfd].improve_) {
                 if (users_[sockfd].timer_flag_) {
@@ -327,7 +321,7 @@ void Server::read_actor(int sockfd)
         if (users_[sockfd].read_once()) {
             LOG_INFO("deal with the client(%s)", inet_ntoa(users_[sockfd].get_address()->sin_addr));
             // 若监测到读事件，将该事件放入请求队列
-            thread_pool_->append(users_ + sockfd);
+            thread_pool_->append(&users_[sockfd]);
             if (timer) 
                 delay_timer(timer);
         } else {
@@ -345,7 +339,7 @@ void Server::write_actor(int sockfd)
         if (timer) 
             delay_timer(timer);
         // 若监测到写事件，将该事件放入请求队列
-        thread_pool_->append(users_ + sockfd, true);
+        thread_pool_->append(&users_[sockfd], true);
         while (true) {
             if (users_[sockfd].improve_) {
                 if (users_[sockfd].timer_flag_) {

@@ -29,5 +29,7 @@
 #include <string>
 
 #define STDERR_FUNC_LINE() fprintf(stderr, "func: %s, line: %d\n", __func__, __LINE__);
+#define DEBUG_FUNC_LINE() fprintf(stderr, "func: %s, line: %d\n", __func__, __LINE__);
+#define DEBUG(format, ...) fprintf(stderr, format, ##__VA_ARGS__); putchar('\n');
 
 #endif

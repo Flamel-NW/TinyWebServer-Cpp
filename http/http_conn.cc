@@ -1,6 +1,9 @@
 #include "log.h"
 
 #include "http_conn.h"
+#include "pch.h"
+#include <cerrno>
+#include <cstdio>
 
 using namespace std;
 
@@ -90,7 +93,7 @@ void HttpConn::init_mysql_result(ConnPool* conn_pool) {
 }
 
 // 关闭连接，关闭一个连接，客户总量减一
-void HttpConn::close(bool real_close) {
+void HttpConn::close_conn(bool real_close) {
     if (real_close && (sockfd_ != -1)) {
         Utils::remove_fd(epollfd_, sockfd_);
         sockfd_ = -1;
@@ -143,7 +146,7 @@ void HttpConn::process() {
     // 调用process_write完成报文响应
     bool write_ret = process_write(read_ret);
     if (!write_ret)
-        close();
+        close_conn();
         
     // 注册并监听写事件
     Utils::modify_fd(epollfd_, sockfd_, EPOLLOUT, trig_mode_);
@@ -237,7 +240,7 @@ HttpConn::LineState HttpConn::parse_line() {
 HttpConn::HttpCode HttpConn::parse_request_line(char* text) {
     // 在http报文中，请求行用来说明请求类型、要访问的资源一挤所使用的http版本，其中各个部分之间通过\t或者空格分隔
     // 请求行中最先含有空格和\t任一字符的位置并返回
-    url_ = strpbrk(text, "\t");
+    url_ = strpbrk(text, " \t");
     // 如果没有空格或\t，则报文格式有误
     if (url_ == nullptr)
         return BAD_REQUEST;
@@ -431,10 +434,9 @@ HttpConn::HttpCode HttpConn::do_request() {
     // 这里的情况是welcome界面，请求服务器上的一个图片
     else strncpy(real_file_ + len, url_, FILENAME_LEN - len - 1);
     
-
     // 通过stat获取请求资源文件信息，成功则将信息更新到file_stat_结构体
     // 失败返回NO_RESOURCE状态，表示资源不存在
-    if (stat(real_file_, &file_stat_) < 0)
+    if (stat(real_file_, &file_stat_) < 0) 
         return NO_RESOURCE;
     // 判断文件的权限，是否可读，不可读则返回FORBIDDEN_REQUEST状态
     if (!(file_stat_.st_mode & S_IROTH))
@@ -563,7 +565,7 @@ bool HttpConn::process_write(HttpCode ret) {
     }
     // 除FILE_REQUEST状态外，其余状态只申请一个iovec，指向响应报文缓冲区
     iv_[0].iov_base = write_buf_;
-    iv_[1].iov_len = write_idx_;
+    iv_[0].iov_len = write_idx_;
     iv_count_ = 1;
     bytes_unsent_ = write_idx_;
     return true;

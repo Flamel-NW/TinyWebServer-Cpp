@@ -55,7 +55,7 @@ public:
     void init(int sockfd, const sockaddr_in& addr, const char* root_dir, bool trig_mode, bool close_log,
         std::string username, std::string password, std::string db_name);
     // 关闭http连接
-    void close(bool real_close = true);
+    void close_conn(bool real_close = true);
     void process();
     // 读取浏览器端发来的全部数据
     bool read_once();
