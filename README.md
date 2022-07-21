@@ -9,6 +9,9 @@
 ## 运行方式
 
 ```bash
+    cd build/
+    cmake ..
+    make
 
     ./TinyWebServer [-p port] [-w write_log] [-m trig_mode] [-o opt_linger] [-c conn_pool_size] [-t thread_pool_size] [-c close_log] [-a actor_pattern]
 
